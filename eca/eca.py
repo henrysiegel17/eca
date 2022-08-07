@@ -54,6 +54,7 @@ def eca_90(bitstring):
 
 
 def match(b1, b2):
+    """This function needs a code comment"""
     if len(b1) == len(b2):
         for i in range(0, len(b1)):
             if b1[i] != b2[i]:
