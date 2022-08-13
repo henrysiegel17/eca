@@ -1,5 +1,14 @@
 import math
-from tracemalloc import start
+import pygame
+from tkinter import messagebox
+from pygame.locals import*
+import time
+
+WIDTH = 500
+HEIGHT = 500
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
 '''
 the way a knight moves:
 i+2, j+1
@@ -9,11 +18,11 @@ i+1,j-2
 i-1,j+2
 i-1,j-2
 i-2,j+1
-i-2,j+1
+i-2,j-1
 '''
 
 knight_movement = [[2, 1], [2, -1], [1, 2],
-                   [1, -2], [-1, 2], [-1, -2], [-2, 1], [-2, 1]]
+                   [1, -2], [-1, 2], [-1, -2], [-2, 1], [-2, -1]]
 
 
 def naive_optimal_solution(A):
@@ -30,21 +39,23 @@ def naive_optimal_solution(A):
 
     knights = single_array(w, b)
     end = complementary(knights)
+    answer = []
     path = find_shortest_path(A, knights, end)
     if len(path) == 0:
         print("sorry, I can't find a solution")
     else:
-        print(path)
-        answer = []
         # ONE FINAL DETOUR --> WE MUST CONVERT OUR
         # "FLATTENED" INTEGERS TO ACTUAL COORDINATES
         for i in range(len(path)-1, -1, -1):
             a = path[i]
-            x = thicken(len(A[0]), a[0])
-            y = thicken(len(A[0]), a[1])
-            position = [x, y]
+            position = []
+            for j in range(len(a)):
+                e = thicken(len(A[0]), a[j])
+                position.append(e)
             answer.append(position)
-        print(answer)
+        # OPTIONAL STEP:
+        # DISPLAY ON A BOARD
+    printBoard(A, answer)
 
 
 def complementary(A):
@@ -65,7 +76,10 @@ def complementary(A):
     second_half = heapPermutation(arr1, half, [])
     for f in first_half:
         for s in second_half:
-            state = single_array(f, s).copy()
+            if len(first_half) == 1:
+                state = single_array([f], [s]).copy()
+            else:
+                state = single_array(f, s).copy()
             possible_states.append(state)
     return possible_states
 
@@ -77,7 +91,10 @@ def heapPermutation(a, size, answer):
     # if size becomes 1 then returns the obtained
     # permutation
     if size == 1:
-        answer.append(a)
+        # copy elements of a over to answer
+        temp = a.copy()
+        answer.append(temp)
+        return a
 
     for i in range(size):
         heapPermutation(a, size-1, answer)
@@ -162,28 +179,32 @@ def BFS(A, knights, end):
                 if condition1 and condition2:
                     condition3 = new_position in knights
                 # check that the resulting new position is not already in used_positions
-                test = knights.copy()
-                test[i] = new_position
-                temp_tag = base_x(test, base)
+                    test = knights.copy()
+                    test[i] = new_position
+                    temp_tag = base_x(test, base)
 
                 # WIN CONDITION: IF WE SPOT AN END CONFIGURATION WE STOP
-                if temp_tag in goals:
-                    map[temp_tag] = u
-                    return (temp_tag, map)
+                    if temp_tag in goals:
+                        map[temp_tag] = u
+                        return (temp_tag, map)
 
-                if condition3 == False:
-                    # ONLY EXPLORE IF WE DIDN'T EXPLORE THE POSITION ALREADY
-                    condition4 = temp_tag in used_positions
+                    if condition3 == False:
+                        # ONLY EXPLORE IF WE DIDN'T EXPLORE THE POSITION ALREADY
+                        condition4 = temp_tag in used_positions
 
-                # IF WE HAVE A CONNECTION
-                if condition4 == False:
-                    # ADD TO QUEUE
-                    Queue.append(temp_tag)
-                    # ADD TO USED VERTICIES
-                    used_positions.append(temp_tag)
-                    # FINALLY UPDATE MAP:
-                    map[temp_tag] = u
-        count += 1
+                    # IF WE HAVE A CONNECTION
+                    if condition4 == False:
+                        # ADD TO QUEUE
+                        Queue.append(temp_tag)
+                        # ADD TO USED VERTICIES
+                        used_positions.append(temp_tag)
+                        # FINALLY UPDATE MAP:
+                        map[temp_tag] = u
+                count += 1
+                if count % 100000 == 0:
+                    print("still thinking for the " +
+                          str(int(count/100000)) + "th time")
+
     return (0, temp_tag)
 
 
@@ -199,7 +220,7 @@ def find_shortest_path(A, knights, end):
     path.append(reversebase(goal, len(knights), len(A)*len(A[0])))
     while goal != start:
         goal = map[goal]
-        # PATH PRINTS OUT A SEQUENCE OF ARRAYS
+        # PATH #printS OUT A SEQUENCE OF ARRAYS
         # must convert the integers back to arrays first
         path.append(reversebase(goal, len(knights), len(A)*len(A[0])))
 
@@ -238,9 +259,150 @@ def thicken(width, num):
     return (times, val)
 
 
-board = [['N', 'Y', 'W', 'N', 'N'],
-         ['Y', 'N', 'Y', 'N', 'B'],
-         ['Y', 'N', 'Y', 'N', 'N'],
-         ['N', 'N', 'Y', 'N', 'N']]
+def printBoard(A, path):
+    pygame.init()
+    # Initializing surface
+    surface = pygame.display.set_mode((WIDTH, HEIGHT))
+    white_knight = pygame.image.load('white_knight.png')
+    black_knight = pygame.image.load('black_knight.png')
+    run = True
+    # We want to scale the images down to the size of the squares
+    desired_width = WIDTH/len(A[0])
+    desired_height = HEIGHT/len(A)
+    actual_black_knight = pygame.transform.scale(
+        black_knight, (desired_width, desired_height))
+    actual_white_knight = pygame.transform.scale(
+        white_knight, (4/5*desired_width, 4/5*desired_height))
+    path_index = 0
+    messagebox.showinfo("Path", str(path))
 
-naive_optimal_solution(board)
+    if len(path) > 0:
+        # DEFINE SOME NOTION OF DISPLACEMENT FOR EACH KNIGHT
+        displacement = [[0 for j in range(2)] for i in range(len(path[0]))]
+        total_displacement = [[0 for k in range(2)]
+                              for m in range(len(path[0]))]
+        movement = False
+        time_iteration = 0
+        key = ""
+        while run:
+            surface.fill(WHITE)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    run = False
+            keys = pygame.key.get_pressed()
+            if keys[K_LEFT]:
+                # backtrack
+                if path_index > 0 and movement == False:
+                    key = "left"
+                    # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                    for i in range(len(path[0])):
+                        # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                        total_displacement[i][0] = path[path_index -
+                                                        1][i][0] - path[path_index][i][0]
+                        total_displacement[i][1] = path[path_index -
+                                                        1][i][1] - path[path_index][i][1]
+                    movement = True
+            if keys[K_RIGHT]:
+                # continue to next position
+                if path_index < len(path)-1 and movement == False:
+                    key = "right"
+                    # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                    for i in range(len(path[0])):
+                        # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                        total_displacement[i][0] = path[path_index +
+                                                        1][i][0] - path[path_index][i][0]
+                        total_displacement[i][1] = path[path_index +
+                                                        1][i][1] - path[path_index][i][1]
+                    movement = True
+        # We want to scale the images down to the size of the squares
+
+        # #print out board:
+        # width = (Width of screen)/(length of A[0])
+        # height = (Height of screen)/(length of A)
+
+        # CHECK MOVEMENT CONDITION
+            if movement == False:
+                for i in range(len(total_displacement)):
+                    for j in range(len(total_displacement[0])):
+                        displacement[i][j] = 0
+            if movement == True:
+                # ASSUME IT TAKES KNIGHT 0.25 SECOND TO MOVE
+                time_iteration += 1
+                time.sleep(0.005)
+                # total of 50 iterations
+                if time_iteration == 50:
+                    time_iteration = 0
+                    if key == "left":
+                        path_index -= 1
+                    if key == "right":
+                        path_index += 1
+                    movement = False
+                for s in range(len(path[0])):
+                    displacement[s][0] = (total_displacement[s][0] /
+                                          50) * time_iteration
+                    displacement[s][1] = (total_displacement[s][1] /
+                                          50) * time_iteration
+            width = WIDTH/len(A[0])
+            height = HEIGHT/len(A)
+            for y in range(len(A)):
+                for x in range(len(A[0])):
+                    # IF WE DON'T HAVE AN 'N'
+                    if A[y][x] != 'N':
+                        pygame.draw.rect(surface, BLACK, pygame.Rect(
+                            width*x, height*y, width, height), 2)
+                    # #print OUT KNIGHTS
+            for i in range(int(len(path[0])/2)):
+                surface.blit(actual_white_knight, ((width)*(path[path_index][i][1] + displacement[i][1]) + 1/10*(
+                    width), height*(path[path_index][i][0]+displacement[i][0]) + 1/10*(height)))
+
+                surface.blit(actual_black_knight, ((width)*(path[path_index][i+int(len(path[0])/2)][1] + displacement[i+int(
+                    len(path[0])/2)][1]), height*(path[path_index][i+int(len(path[0])/2)][0]+displacement[i+int(len(path[0])/2)][0])))
+
+            pygame.display.flip()
+
+
+board = [['N', 'W', 'N', 'N'],
+         ['N', 'Y', 'Y', 'N'],
+         ['N', 'Y', 'W', 'Y'],
+         ['B', 'Y', 'B', 'Y'],
+         ]
+
+debugboard = [['Y', 'Y', 'Y'],
+              ['Y', 'N', 'N'],
+              ['W', 'N', 'B'],
+              ['N', 'N', 'N'],
+              ['N', 'Y', 'N']]
+
+board2 = [['W', 'Y', 'Y', 'B'],
+          ['Y', 'Y', 'Y', 'Y'],
+          ['B', 'Y', 'Y', 'W'],
+          ['Y', 'Y', 'Y', 'Y']]
+
+threeknights = [['N', 'W', 'Y', 'Y'],
+                ['N', 'N', 'N', 'Y'],
+                ['B', 'Y', 'N', 'N'],
+                ['N', 'N', 'N', 'W'],
+                ['Y', 'B', 'N', 'N'],
+                ['N', 'N', 'B', 'N'],
+                ['W', 'N', 'N', 'N']
+                ]
+
+oneknight = [['Y', 'W', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y'],
+             ['Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'B']]
+
+
+naive_optimal_solution(oneknight)
