@@ -1,6 +1,8 @@
+import pygame
+import time
 from cmath import inf
 from pygame.locals import *
-from naive import thicken
+from naive import thicken, single_array, base_x, printBoard, complementary
 
 WIDTH = 500
 HEIGHT = 500
@@ -60,17 +62,19 @@ def best_first_search(
     # **************** move = [i, j] --> knight i, and square j
     adjacent_moves = {}
     for i in range(len(knights)):
-        reachable_squares = find_adjacent_moves(A, knights[i], knights, [])
+        reachable_squares = find_adjacent_moves(A, knights[i], knights)
         adjacent_moves[i] = reachable_squares
     lowest_move = [0, adjacent_moves[0][0]]
-    low = 1000000
-    for knight_num, squares in adjacent_moves.keys():
+    low = float('inf')
+    for knight_num, squares in adjacent_moves.items():
         p_considerations = []
         for s in range(len(squares)):
             move = [knight_num, squares[s]]
-            g = g(move, white_distances, black_distances, int(len(knights) / 2))
+            g_value = g(move, white_distances,
+                        black_distances, int(len(knights) / 2)) - g([knight_num, knights[knight_num]], white_distances,
+                                                                    black_distances, int(len(knights) / 2))
             # knights, i, down_map, up_map, white_distances, black_distances, size
-            p = p(
+            p_value = p(
                 knights,
                 s,
                 white_up_map,
@@ -84,6 +88,17 @@ def best_first_search(
             )
             # While p is the priority of the knight moving, pn is an estimate of the priority after n iterations
             p_considerations.append(p)
+            p_value_prime = pn(knights,
+                               s,
+                               white_up_map,
+                               black_up_map,
+                               white_down_map,
+                               black_down_map,
+                               white_distances,
+                               black_distances,
+                               move,
+                               int(len(knights) / 2),
+                               1)
             """
                 Check if p is the same
 
@@ -101,8 +116,8 @@ def best_first_search(
                     position[i] = find_adjacent_moves(A, position, used)[0]
                     used.append(position[i])
             """
-            pn = pn()
-            score = g + p
+            #pn = pn()
+            score = g_value + p_value + p_value_prime
             if score < low:
                 low = score
                 lowest_move = move
@@ -148,8 +163,8 @@ def find_adjacent_moves(A, knight, repeat):
 def g(move, white_distances, black_distances, size):
     if move[0] < size:
         # white knight
-        return white_distances[move]
-    return black_distances[move]
+        return black_distances[move[1]]
+    return white_distances[move[1]]
 
 
 # p(x) = Σ (change g(x) for each other knight when the given knight exists or not)
@@ -186,11 +201,11 @@ def p(
             # and g is g([k, knight[k]], white_distances, black_distances, size of knights)
 
             if k < size:
-                p += g([k, knights[k]], updated_white_distances,
-                       black_distances, size)
-            elif k >= size:
                 p += g([k, knights[k]], white_distances,
                        updated_black_distances, size)
+            elif k >= size:
+                p += g([k, knights[k]], updated_white_distances,
+                       black_distances, size)
 
     # note that p >= 0
     return p
@@ -202,19 +217,23 @@ def p(
 def pn(
     knights,
     i,
-    down_map,
-    up_map,
+    white_down_map,
+    black_down_map,
+    white_up_map,
+    black_up_map,
     white_distances,
     black_distances,
     adjacent_moves,
     size,
-    n,
+    n
 ):
     return p(
         knights,
         i,
-        down_map,
-        up_map,
+        white_down_map,
+        black_down_map,
+        white_up_map,
+        black_up_map,
         white_distances,
         black_distances,
         adjacent_moves[n],
@@ -228,7 +247,8 @@ def propagate_graph(n, down_map, up_map, distances, size):
     used = []
     queue = []
     queue.append(n)
-    distances[n] = float("inf") / (2 * size)
+    distances_copy = distances.copy()
+    distances_copy[n] = float("inf") / (2 * size)
 
     while len(queue) > 0:
         u = queue[0]
@@ -236,12 +256,12 @@ def propagate_graph(n, down_map, up_map, distances, size):
 
         # u is the node we are exploring, and we are determining whether the
         # distances of the parents of u depend on the distance of u
-        for v in up_map[u] and v not in used:
+        for v in up_map[u]:
             # look at all nodes v one level above
-            if len(down_map[v] == 1):
+            if v not in used and len(down_map[v]) == 1:
                 # in other words, distance[v] is fully dependent on distance[u]
                 used.append(v)
-                queue.append(distances)
+                queue.append(v)
 
     return distances
 
@@ -260,6 +280,12 @@ def BFS(A, origins):
     # used_moves contains all moves that we already checked
     used_moves = []
 
+    # We store a map that points to all higher_up nodes (with distances 1 larger):
+    up_map = {}
+
+    # Similarly we'll make a down_map that points to all lower nodes (with distances 1 smaller):
+    down_map = {}
+
     # distance counter --> indicates every node's distance from origin
     dist = {}
 
@@ -267,12 +293,7 @@ def BFS(A, origins):
     for i in range(len(A)):
         for j in range(len(A[0])):
             dist[i * len(A[0]) + j] = float("inf") / (2 * len(origins))
-
-    # We store a map that points to all higher_up nodes (with distances 1 larger):
-    up_map = {}
-
-    # Similarly we'll make a down_map that points to all lower nodes (with distances 1 smaller):
-    down_map = {}
+            down_map[i * len(A[0]) + j] = []
 
     # In the beginning, all origins are of 0 distance, Queue and used_moves contains all origins
     for o in origins:
@@ -358,19 +379,46 @@ def main():
     white_distances = BFS(board, knights[1])
     # black knights
     black_distances = BFS(board, knights[0])
+    real_knights = single_array(knights[0], knights[1])
+    end_values = []
+    end = complementary(real_knights)
+    for e in end:
+        end_values.append(base_x(real_knights, len(board)*len(board[0])))
 
-    # A, knights, white_distances, black_distances, down_map, up_map
-    move = best_first_search(
-        board,
-        knights,
-        white_distances[0],
-        black_distances[0],
-        white_distances[1],
-        black_distances[1],
-        white_distances[2],
-        black_distances[2],
-    )
-    print(move)
+    value = base_x(real_knights, len(board)*len(board[0]))
+    print(white_distances)
+
+    # BLACK KNIGHT STARTS --> WHITE GOALS:
+    # USE WHITE DISTANCES
+
+    # WHITE KNIGHT STARTS --> BLACK GOALS
+    # USE BLACK GOALS
+
+    # knights = [white, black]
+
+    path = []
+    while value not in end:
+        # A, knights, white_distances, black_distances, down_map, up_map
+        move = best_first_search(
+            board,
+            real_knights,
+            white_distances[0],
+            black_distances[0],
+            white_distances[1],
+            black_distances[1],
+            white_distances[2],
+            black_distances[2],
+        )
+        position = []
+        real_knights[move[0]] = move[1]
+        value = base_x(real_knights, len(board)*len(board[0]))
+        for i in range(len(real_knights)):
+            coordinates = thicken(len(board[0]), real_knights[i])
+            position.append(coordinates)
+        print(position)
+        path.append(position)
+
+    printBoard(path)
 
 
 if "__main__" == __name__:
