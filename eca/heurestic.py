@@ -162,9 +162,9 @@ def find_adjacent_moves(A, knight, repeat):
 
 def g(move, white_distances, black_distances, size):
     if move[0] < size:
-        # white knight
-        return black_distances[move[1]]
-    return white_distances[move[1]]
+        # white knight moving
+        return white_distances[move[1]]
+    return black_distances[move[1]]
 
 
 # p(x) = Σ (change g(x) for each other knight when the given knight exists or not)
@@ -201,11 +201,13 @@ def p(
             # and g is g([k, knight[k]], white_distances, black_distances, size of knights)
 
             if k < size:
-                p += g([k, knights[k]], white_distances,
-                       updated_black_distances, size)
-            elif k >= size:
                 p += g([k, knights[k]], updated_white_distances,
                        black_distances, size)
+            elif k >= size:
+                p += g([k, knights[k]], white_distances,
+                       updated_black_distances, size)
+            p -= g([k, knights[k]], white_distances,
+                   black_distances, size)
 
     # note that p >= 0
     return p
@@ -263,7 +265,7 @@ def propagate_graph(n, down_map, up_map, distances, size):
                 used.append(v)
                 queue.append(v)
 
-    return distances
+    return distances_copy
 
 
 # We want to pre-compute every square's distance away from the origins,
@@ -323,7 +325,7 @@ def BFS(A, origins):
         # I know this doubles the time of the algorithm, but I have no other choice
         all_possible_moves = find_adjacent_moves(A, u, [])
         for non_discriminatory_move in all_possible_moves:
-            if dist[non_discriminatory_move] < dist[u]:
+            if dist[non_discriminatory_move] < dist[u] and non_discriminatory_move not in down_map[u]:
                 down_map[u].append(non_discriminatory_move)
 
     return dist, up_map, down_map
@@ -377,27 +379,40 @@ def main():
     knights = find_knights(board)
     # white knights
     white_distances = BFS(board, knights[1])
+
     # black knights
     black_distances = BFS(board, knights[0])
     real_knights = single_array(knights[0], knights[1])
     end_values = []
+    print(black_distances[0])
+    print()
     end = complementary(real_knights)
     for e in end:
         end_values.append(base_x(real_knights, len(board)*len(board[0])))
 
     value = base_x(real_knights, len(board)*len(board[0]))
-    print(white_distances)
 
     # BLACK KNIGHT STARTS --> WHITE GOALS:
-    # USE WHITE DISTANCES
+    # USE BLACK DISTANCES
 
     # WHITE KNIGHT STARTS --> BLACK GOALS
-    # USE BLACK GOALS
+    # USE WHITE DISTANCES
 
     # knights = [white, black]
 
     path = []
-    while value not in end:
+    print(white_distances[0])
+    count = 0
+    
+    while value not in end and count < 2000:
+        position = []
+        value = base_x(real_knights, len(board)*len(board[0]))
+        c = []
+        for i in range(len(real_knights)):
+            coordinates = thicken(len(board[0]), real_knights[i])
+            c.append(real_knights[i])
+            position.append(coordinates)
+        path.append(position)
         # A, knights, white_distances, black_distances, down_map, up_map
         move = best_first_search(
             board,
@@ -409,17 +424,10 @@ def main():
             white_distances[2],
             black_distances[2],
         )
-        position = []
         real_knights[move[0]] = move[1]
-        value = base_x(real_knights, len(board)*len(board[0]))
-        for i in range(len(real_knights)):
-            coordinates = thicken(len(board[0]), real_knights[i])
-            position.append(coordinates)
-        print(position)
-        path.append(position)
+        count += 1
 
-    printBoard(path)
-
+    printBoard(board, path)
 
 if "__main__" == __name__:
     main()
