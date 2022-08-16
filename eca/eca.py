@@ -1,5 +1,6 @@
 import math
 import pygame
+
 """
 111
 110
@@ -11,10 +12,11 @@ import pygame
 000
 """
 
-YES = (225,67,67)
-NO = (256,256,256)
-WIDTH = 800
-HEIGHT = 800
+YES = (225, 67, 67)
+NO = (255, 255, 255)
+WIDTH = 500
+HEIGHT = 500
+
 
 def eca(num, bitstring):
     values = converttoBinary(num, 8)
@@ -99,32 +101,53 @@ def findfixedpointstep1(size):
     return collection
 
 
-configurations = findfixedpoints(9)
-collection = findfixedpointstep1(9)
-for i in range(0, len(configurations)):
-    print(configurations[i])
-for i in range(0, len(collection)):
-    print(collection[i])
-print(eca(89, [0, 0, 0, 0, 0, 0, 1]))
+def main():
+    configurations = findfixedpoints(9)
+    collection = findfixedpointstep1(9)
+    for i in range(0, len(configurations)):
+        print(configurations[i])
+    for i in range(0, len(collection)):
+        print(collection[i])
+    print(eca(89, [0, 0, 0, 0, 0, 0, 1]))
 
-pygame.init()
-# Initializing surface
-surface = pygame.display.set_mode((WIDTH,HEIGHT))
-size = 100
-initial = []
-initial = [0 for i in range(size)]
-initial[int(size/2)] = 1
-kth = initial.copy
+    pygame.init()
+    # Initializing surface
+    surface = pygame.display.set_mode((WIDTH, HEIGHT))
+    size = 200
+    initial = []
+    initial = [0 for i in range(size)]
+    initial[int(size / 2)] = 1
+    kth = initial.copy()
 
-#run n iterations of eca
-n=100
+    # run n iterations of eca
+    n = 200
 
-for k in range(0,n):
-    kth = eca(90,kth)
-    for i in range(0,len(k)):
-        color = YES
-        if kth[i] == 0:
-            color = NO
-        pygame.draw.rect(surface, color, pygame.Rect(int(WIDTH/n*i), int(HEIGHT/n*k), int(WIDTH/n), int(HEIGHT/n)))
-        pygame.display.flip()
+    running = True
+    count = 0
+    while running:
+        for k in range(0, n):
+            for i in range(0, len(kth)):
+                color = YES
+                if kth[i] == 0:
+                    color = NO
+                pygame.draw.rect(
+                    surface,
+                    color,
+                    pygame.Rect(
+                        int(WIDTH / size * i),
+                        int(HEIGHT / n * (k + 1)),
+                        int(WIDTH / size),
+                        int(HEIGHT / n),
+                    ),
+                )
+                pygame.display.flip()
+            kth = eca(99, kth)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if running == False:
+                pygame.quit
 
+
+if "__main__" == __name__:
+    main()
