@@ -1,8 +1,11 @@
+from calendar import c
 import pygame
 import time
+import math
 from cmath import inf
 from pygame.locals import *
 from naive import thicken, single_array, base_x, printBoard, complementary
+from eca import match
 
 WIDTH = 500
 HEIGHT = 500
@@ -45,6 +48,80 @@ knight_movement = [
 # note THAT THERE IS NO f(X)
 
 # takes in board and knights, returns the best move at any given instance
+def run_heurestic(board):
+    start_end = []
+    knights = find_knights(board)
+    for i in range(len(knights)):
+        pos = []
+        for j in range(len(knights[i])):
+            pos.append(knights[i][j])
+        start_end.append(pos)
+    # white knights
+    white_distances = BFS(board, knights[1],-1)
+    # black knights
+    black_distances = BFS(board, knights[0],-1)
+    real_knights = single_array(knights[0], knights[1])
+    end_values = []
+    end = complementary(real_knights)
+    print("hello")
+    
+    for e in end:
+        end_values.append(base_x(e, len(board)*len(board[0])))
+
+    value = -1
+
+    # BLACK KNIGHT STARTS --> WHITE GOALS:
+    # USE BLACK DISTANCES
+
+    # WHITE KNIGHT STARTS --> BLACK GOALS
+    # USE WHITE DISTANCES
+
+    # knights = [white, black]
+
+    path = []
+    count = 0
+    repeat_table = []
+    
+    c = []
+    position = []
+    for i in range(len(real_knights)):
+        coordinates = thicken(len(board[0]), real_knights[i])
+        c.append(real_knights[i])
+        position.append(coordinates)
+    path.append(position) 
+
+    while count_array(end,real_knights) != 1:
+        position = []
+        # A, knights, white_distances, black_distances, down_map, up_map
+        move = best_first_search(
+            board,
+            knights,
+            white_distances,
+            black_distances,
+            start_end,
+            repeat_table
+        )
+
+        real_knights[move[0]] = move[1]
+        #update knights:
+        if move[0] < int(len(real_knights)/2):
+            knights[0][move[0]] = move[1]
+        else:
+            knights[1][move[0]%int(len(real_knights)/2)] = move[1]
+        count += 1
+        
+        #update repeats
+        repeat_table.append(real_knights.copy())   
+
+        #update paths
+        c = []
+        for i in range(len(real_knights)):
+            coordinates = thicken(len(board[0]), real_knights[i])
+            c.append(real_knights[i])
+            position.append(coordinates)
+        path.append(position) 
+
+    printBoard(board, path)
 
 
 def best_first_search(
@@ -52,53 +129,59 @@ def best_first_search(
     knights,
     white_distances,
     black_distances,
-    white_up_map,
-    black_up_map,
-    white_down_map,
-    black_down_map,
+    start_end,
+    repeat_table
 ):
-    # **************** adjacent moves = {knight i : adjacent squares}
+    # **************** adjacent moves = {total_knights i : adjacent squares}
     # **************** knights = [white, black]
     # **************** move = [i, j] --> knight i, and square j
+    white_knights = knights[0]
+    black_knights = knights[1]
+    total_knights = single_array(white_knights, black_knights)
     adjacent_moves = {}
-    for i in range(len(knights)):
-        reachable_squares = find_adjacent_moves(A, knights[i], knights)
+    for i in range(len(total_knights)):
+        reachable_squares = find_adjacent_moves(A, total_knights[i], total_knights)
         adjacent_moves[i] = reachable_squares
-    lowest_move = [0, adjacent_moves[0][0]]
+    lowest_move = [0,0]
+    for m in range(len(adjacent_moves)):
+        for k in range(len(adjacent_moves[m])):
+            lowest_move = [m, adjacent_moves[m][k]]
     low = float('inf')
     for knight_num, squares in adjacent_moves.items():
         p_considerations = []
         for s in range(len(squares)):
-            move = [knight_num, squares[s]]
-            g_value = g(move, white_distances,
-                        black_distances, int(len(knights) / 2)) - g([knight_num, knights[knight_num]], white_distances,
-                                                                    black_distances, int(len(knights) / 2))
-            # knights, i, down_map, up_map, white_distances, black_distances, size
+            move = (knight_num, squares[s])
+            start_end_array = single_array(start_end[0], start_end[1])
+            g_value = 100*((g(move, white_distances,
+                        black_distances, int(len(total_knights) / 2)) - g([knight_num, total_knights[knight_num]], white_distances,
+                                                                    black_distances, int(len(total_knights) / 2))))
+            g_start = g([knight_num, start_end_array[knight_num]], white_distances, black_distances, int(len(total_knights) / 2))
+            if g([knight_num, total_knights[knight_num]], white_distances, black_distances, int(len(total_knights) / 2)) != 0:
+                g_value = ((g(move, white_distances,
+                        black_distances, int(len(total_knights) / 2)) - g([knight_num, total_knights[knight_num]], white_distances,
+                                                                    black_distances, int(len(total_knights) / 2))))/g([knight_num, total_knights[knight_num]], white_distances,
+                                                                    black_distances, int(len(total_knights) / 2))
+
+            # A,move, white_distances, black_distances, knights, size
             p_value = p(
-                knights,
-                s,
-                white_up_map,
-                black_up_map,
-                white_down_map,
-                black_down_map,
+                A,
+                [knight_num,total_knights[knight_num]],
                 white_distances,
                 black_distances,
-                knights[knight_num],
-                int(len(knights) / 2),
+                knights,
+                int(len(total_knights) / 2),
+                start_end
             )
             # While p is the priority of the knight moving, pn is an estimate of the priority after n iterations
             p_considerations.append(p)
-            p_value_prime = pn(knights,
-                               s,
-                               white_up_map,
-                               black_up_map,
-                               white_down_map,
-                               black_down_map,
-                               white_distances,
-                               black_distances,
-                               move,
-                               int(len(knights) / 2),
-                               1)
+            '''p_value_prime = p(A,
+                move,
+                white_distances,
+                black_distances,
+                knights,
+                int(len(knights) / 2)
+                )
+                '''
             """
                 Check if p is the same
 
@@ -117,16 +200,19 @@ def best_first_search(
                     used.append(position[i])
             """
             #pn = pn()
-            score = g_value + p_value + p_value_prime
+            hypothetical_knights = total_knights.copy()
+            hypothetical_knights[move[0]] = move[1]
+            # DISCOURAGE ALGORITHM FROM REPEATING MOVES
+            repeat_penalty = count_array(repeat_table, hypothetical_knights)*100000000*(len(total_knights)/2-1)
+            score = g_value + p_value + repeat_penalty
             if score < low:
                 low = score
                 lowest_move = move
-
+    print("hello")
     return lowest_move
 
 
 # returns all squares that are reachable by knight
-
 
 def find_adjacent_moves(A, knight, repeat):
     adjacent_moves = []
@@ -171,78 +257,6 @@ def g(move, white_distances, black_distances, size):
 # index i --> which knight we want to consider
 
 
-def p(
-    knights,
-    i,
-    white_down_map,
-    black_down_map,
-    white_up_map,
-    black_up_map,
-    white_distances,
-    black_distances,
-    move,
-    size,
-):
-    p = 0
-
-    updated_white_distances = propagate_graph(
-        move, white_down_map, white_up_map, white_distances, size
-    )
-    updated_black_distances = propagate_graph(
-        move, black_down_map, black_up_map, black_distances, size
-    )
-
-    for k in range(size):
-        if k == i:
-            continue
-        elif k != i:
-            # In order to compute Δg, we need to compute g' - g,
-            # where g' is g([k,knight[k]], updated_white_distances, updated_black_distances, size of knights)
-            # and g is g([k, knight[k]], white_distances, black_distances, size of knights)
-
-            if k < size:
-                p += g([k, knights[k]], updated_white_distances,
-                       black_distances, size)
-            elif k >= size:
-                p += g([k, knights[k]], white_distances,
-                       updated_black_distances, size)
-            p -= g([k, knights[k]], white_distances,
-                   black_distances, size)
-
-    # note that p >= 0
-    return p
-
-
-# iteratively calls p
-
-
-def pn(
-    knights,
-    i,
-    white_down_map,
-    black_down_map,
-    white_up_map,
-    black_up_map,
-    white_distances,
-    black_distances,
-    adjacent_moves,
-    size,
-    n
-):
-    return p(
-        knights,
-        i,
-        white_down_map,
-        black_down_map,
-        white_up_map,
-        black_up_map,
-        white_distances,
-        black_distances,
-        adjacent_moves[n],
-        size,
-    )
-
-
 # BY CHANGING NODE n's DISTANCE TO INFINITY, THAT MAY OR MAY NOT CHANGE EVERY OTHER NODE'S DISTANCE
 def propagate_graph(n, down_map, up_map, distances, size):
 
@@ -250,7 +264,7 @@ def propagate_graph(n, down_map, up_map, distances, size):
     queue = []
     queue.append(n)
     distances_copy = distances.copy()
-    distances_copy[n] = float("inf") / (2 * size)
+    distances_copy[n] = 10000000
 
     while len(queue) > 0:
         u = queue[0]
@@ -272,8 +286,8 @@ def propagate_graph(n, down_map, up_map, distances, size):
 # as well as creating a map that stores all adjacent nodes to any given node
 # very useful for computing g(x), p(x), pp(x)
 
-
-def BFS(A, origins):
+# node n will be excluded
+def BFS(A, origins, n):
 
     # BFS
     # we start with a Queue that stores all adjacent configurations that should be explored
@@ -282,11 +296,8 @@ def BFS(A, origins):
     # used_moves contains all moves that we already checked
     used_moves = []
 
-    # We store a map that points to all higher_up nodes (with distances 1 larger):
-    up_map = {}
-
-    # Similarly we'll make a down_map that points to all lower nodes (with distances 1 smaller):
-    down_map = {}
+    if n != -1:
+        used_moves.append(n)
 
     # distance counter --> indicates every node's distance from origin
     dist = {}
@@ -294,14 +305,14 @@ def BFS(A, origins):
     # in the beginning, we assume every node's distance from the origin is "infinity"
     for i in range(len(A)):
         for j in range(len(A[0])):
-            dist[i * len(A[0]) + j] = float("inf") / (2 * len(origins))
-            down_map[i * len(A[0]) + j] = []
+            dist[i * len(A[0]) + j] = 10000000
 
     # In the beginning, all origins are of 0 distance, Queue and used_moves contains all origins
     for o in origins:
-        dist[o] = 0
-        Queue.append(o)
-        used_moves.append(o)
+        if o not in used_moves:
+            dist[o] = 0
+            Queue.append(o)
+            used_moves.append(o)
 
     while (len(Queue)) != 0:
         u = Queue[0]
@@ -314,31 +325,39 @@ def BFS(A, origins):
         # append to queue and used_moves list
         # update distances accordingly
         for move in adjacent_moves:
-            down_map[move].append(u)
             dist[move] = dist[u] + 1
             Queue.append(move)
             used_moves.append(move)
 
-        # Update up and down maps accordingly
-        up_map[u] = adjacent_moves
-
-        # I know this doubles the time of the algorithm, but I have no other choice
-        all_possible_moves = find_adjacent_moves(A, u, [])
-        for non_discriminatory_move in all_possible_moves:
-            if dist[non_discriminatory_move] < dist[u] and non_discriminatory_move not in down_map[u]:
-                down_map[u].append(non_discriminatory_move)
-
-    return dist, up_map, down_map
+    return dist
 
 
 # We need to define one more function, an actual Astar algorithm
 # that determines if a given node is reachable from another node
 # very useful for p(x) and pp(x)
 
-
 def Astar(map, computed_distances):
     return 0
 
+# delta g function
+# size = int(len(knights)/2)
+# move --> [knight number, position]
+# knights --> [white_knights, black_knights]
+def p(A,exclude, white_distances, black_distances, knights, size,start_end):
+    p = 0
+    updated_white_distances = BFS(A, start_end[1], exclude[1])
+    updated_black_distances = BFS(A, start_end[0], exclude[1])
+
+    total_knights = single_array(knights[0], knights[1])
+
+    for i in range(0, len(total_knights)):
+        if i != exclude[0]:
+            # KNIGHT IS NOT THERE
+            p += g((i,total_knights[i]), white_distances, black_distances, size)
+            # KNIGHT IS THERE
+            p -= g((i,total_knights[i]), updated_white_distances, updated_black_distances, size)
+            # KNIGHT IS NOT THERE - KNIGHT IS THERE
+    return p
 
 def find_knights(A):
     # first pre-scan grid to find all white and black knights
@@ -354,80 +373,119 @@ def find_knights(A):
 
     return (w, b)
 
+# count number of times 1D array B occurs in 2D array A
+def count_array(A,B):
+    count = 0
+    for a in A:
+        if match(a,B):
+            count+=1
+    return count
 
-board = oneknight = [
-    ["Y", "W", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+board = [
+    ["B", "B", "B", "B", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "N", "N"],
+    ["N", "N", "N", "N", "N", "N", "Y", "N", "N"],
+    ["N", "N", "N", "N", "N", "N", "Y", "N", "N"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "N", "N"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "B"],
+    ["Y", "Y", "N", "N", "N", "N", "Y", "Y", "Y"],
+    ["N", "Y", "Y", "Y", "Y", "N", "Y", "Y", "Y"],
+    ["N", "Y", "Y", "N", "N", "N", "Y", "Y", "Y"],
+    ["W", "W", "W", "W", "Y", "Y", "Y", "Y", "Y"],
 ]
 
 
+board3 = [
+    ["B", "B", "B", "B", "Y", "Y", "Y", "Y", "Y"],
+    ["B", "B", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["W", "W", "W", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["W", "W", "Y", "Y", "Y", "W", "Y", "Y", "Y"],
+]
+board0 = [
+    ["B", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["W", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+]
+board4 = [
+    ["Y", "B", "W", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "B", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "W", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "W", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "W", "Y", "B", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+]
+board5 = [
+        ["W", "Y", "Y", "B", "Y", "B", "Y"],
+        ["Y", "Y", "B", "Y", "N", "N", "Y"],
+        ["Y", "Y", "W", "N", "N", "N", "W"],
+        ["Y", "Y", "Y", "Y", "W", "N", "B"],
+        ["Y", "B", "W", "Y", "Y", "Y", "Y"]
+    ]
+
+board2 = [
+        ["N", "W", "N", "N"],
+        ["N", "Y", "Y", "N"],
+        ["N", "Y", "W", "Y"],
+        ["B", "Y", "B", "Y"],
+    ]
+
+board6 = [
+        ["Y", "W", "Y"],
+        ["W", "Y", "Y"],
+        ["Y", "B", "B"]
+    ]
+
+board7 = [
+        ["N", "N", "N", "Y", "Y", "Y", "Y"],
+        ["Y", "Y", "Y", "Y", "N", "N", "Y"],
+        ["Y", "Y", "Y", "N", "N", "N", "Y"],
+        ["B", "B", "W", "W", "N", "N", "Y"],
+        ["B", "B", "W", "W", "Y", "Y", "Y"]
+    ]
 def main():
-    knights = find_knights(board)
-    # white knights
-    white_distances = BFS(board, knights[1])
+    run_heurestic(board7)
 
-    # black knights
-    black_distances = BFS(board, knights[0])
-    real_knights = single_array(knights[0], knights[1])
-    end_values = []
-    print(black_distances[0])
-    print()
-    end = complementary(real_knights)
-    for e in end:
-        end_values.append(base_x(real_knights, len(board)*len(board[0])))
-
-    value = base_x(real_knights, len(board)*len(board[0]))
-
-    # BLACK KNIGHT STARTS --> WHITE GOALS:
-    # USE BLACK DISTANCES
-
-    # WHITE KNIGHT STARTS --> BLACK GOALS
-    # USE WHITE DISTANCES
-
-    # knights = [white, black]
-
-    path = []
-    print(white_distances[0])
-    count = 0
-    
-    while value not in end and count < 2000:
-        position = []
-        value = base_x(real_knights, len(board)*len(board[0]))
-        c = []
-        for i in range(len(real_knights)):
-            coordinates = thicken(len(board[0]), real_knights[i])
-            c.append(real_knights[i])
-            position.append(coordinates)
-        path.append(position)
-        # A, knights, white_distances, black_distances, down_map, up_map
-        move = best_first_search(
-            board,
-            real_knights,
-            white_distances[0],
-            black_distances[0],
-            white_distances[1],
-            black_distances[1],
-            white_distances[2],
-            black_distances[2],
-        )
-        real_knights[move[0]] = move[1]
-        count += 1
-
-    printBoard(board, path)
 
 if "__main__" == __name__:
     main()

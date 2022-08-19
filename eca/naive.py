@@ -1,6 +1,7 @@
-import math
 import pygame
+import math
 from tkinter import messagebox
+import tkinter
 from pygame.locals import *
 import time
 
@@ -284,6 +285,7 @@ def thicken(width, num):
 
 
 def printBoard(A, path):
+    root = tkinter.Tk()
     pygame.init()
     # Initializing surface
     surface = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -469,7 +471,7 @@ def main():
         ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "B"],
     ]
 
-    naive_optimal_solution(oneknight)
+    naive_optimal_solution(board)
 
 
 if "__main__" == __name__:
