@@ -9,6 +9,11 @@ WIDTH = 500
 HEIGHT = 500
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+YELLOW = (255,255,0)
+BLUE = (0,255,255)
+RED = (255,0,0)
+LIGHT_GRAY = (233, 233, 233)
+DARK_GRAY = (188, 188, 188)
 
 """
 the way a knight moves:
@@ -64,6 +69,7 @@ def naive_optimal_solution(A):
             answer.append(position)
         # OPTIONAL STEP:
         # DISPLAY ON A BOARD
+    print("The length of the solution is ", len(answer))
     printBoard(A, answer)
 
 
@@ -289,8 +295,8 @@ def printBoard(A, path):
     pygame.init()
     # Initializing surface
     surface = pygame.display.set_mode((WIDTH, HEIGHT))
-    white_knight = pygame.image.load("white_knight.png")
-    black_knight = pygame.image.load("black_knight.png")
+    white_knight = pygame.image.load("white_knight.png").convert_alpha()
+    black_knight = pygame.image.load("black_knight.png").convert_alpha()
     run = True
     # We want to scale the images down to the size of the squares
     desired_width = WIDTH / len(A[0])
@@ -299,7 +305,7 @@ def printBoard(A, path):
         black_knight, (desired_width, desired_height)
     )
     actual_white_knight = pygame.transform.scale(
-        white_knight, (4 / 5 * desired_width, 4 / 5 * desired_height)
+        white_knight, (desired_width, desired_height)
     )
     path_index = 0
     messagebox.showinfo("Path", str(path))
@@ -312,12 +318,24 @@ def printBoard(A, path):
         movement = False
         time_iteration = 0
         key = ""
+        play = False
+        fast_forward = False
         while run:
             surface.fill(WHITE)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
             keys = pygame.key.get_pressed()
+            if keys[K_SPACE]:
+                if play:
+                    play = False
+                else:
+                    play = True
+            if keys[K_LSHIFT]:
+                if fast_forward:
+                    fast_forward = False
+                else:
+                    fast_forward = True
             if keys[K_LEFT]:
                 # backtrack
                 if path_index > 0 and movement == False:
@@ -357,12 +375,39 @@ def printBoard(A, path):
                 for i in range(len(total_displacement)):
                     for j in range(len(total_displacement[0])):
                         displacement[i][j] = 0
+                if play == True:
+                    if key == "right" and path_index < len(path) - 1:
+                        # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                        for i in range(len(path[0])):
+                            # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                            total_displacement[i][0] = (
+                                path[path_index + 1][i][0] - path[path_index][i][0]
+                            )
+                            total_displacement[i][1] = (
+                                path[path_index + 1][i][1] - path[path_index][i][1]
+                            )
+                        movement = True
+                    elif key == "left" and path_index > 0:
+                        for i in range(len(path[0])):
+                            # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                            total_displacement[i][0] = (
+                                path[path_index - 1][i][0] - path[path_index][i][0]
+                            )
+                            total_displacement[i][1] = (
+                                path[path_index - 1][i][1] - path[path_index][i][1]
+                            )
+                        movement = True
             if movement == True:
                 # ASSUME IT TAKES KNIGHT 0.25 SECOND TO MOVE
                 time_iteration += 1
-                time.sleep(0.005)
+                if fast_forward and play:
+                    time.sleep(0.0005)
+                else:    
+                    time.sleep(0.005)
+
                 # total of 50 iterations
-                if time_iteration == 50:
+                total_iterations = 50
+                if time_iteration == total_iterations:
                     time_iteration = 0
                     if key == "left":
                         path_index -= 1
@@ -381,22 +426,43 @@ def printBoard(A, path):
             for y in range(len(A)):
                 for x in range(len(A[0])):
                     # IF WE DON'T HAVE AN 'N'
-                    if A[y][x] != "N":
+                    '''
+                    if A[y][x] == "Y":
                         pygame.draw.rect(
                             surface,
                             BLACK,
                             pygame.Rect(width * x, height * y, width, height),
-                            2,
+                            1,
+                        )
+                    '''
+                    if A[y][x] == "Y":
+                        pygame.draw.rect(
+                            surface,
+                            BLACK,
+                            pygame.Rect(width * x, height * y, width, height),
+                            1,
+                        )
+                    elif A[y][x] == "B":
+                        pygame.draw.rect(
+                            surface,
+                            RED,
+                            pygame.Rect(width * x, height * y, width, height),
+                            1
+                        )
+                    elif A[y][x] == "W":
+                        pygame.draw.rect(
+                            surface,
+                            BLUE,
+                            pygame.Rect(width * x, height * y, width, height),
+                            1
                         )
                     # #print OUT KNIGHTS
             for i in range(int(len(path[0]) / 2)):
                 surface.blit(
                     actual_white_knight,
                     (
-                        (width) * (path[path_index][i][1] + displacement[i][1])
-                        + 1 / 10 * (width),
+                        (width) * (path[path_index][i][1] + displacement[i][1]),
                         height * (path[path_index][i][0] + displacement[i][0])
-                        + 1 / 10 * (height),
                     ),
                 )
 

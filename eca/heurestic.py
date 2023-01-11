@@ -48,7 +48,7 @@ knight_movement = [
 # note THAT THERE IS NO f(X)
 
 # takes in board and knights, returns the best move at any given instance
-def run_heurestic(board):
+def run_heurestic(board, limit):
     start_end = []
     knights = find_knights(board)
     for i in range(len(knights)):
@@ -90,7 +90,7 @@ def run_heurestic(board):
         position.append(coordinates)
     path.append(position) 
 
-    while count_array(end,real_knights) != 1:
+    while count_array(end,real_knights) != 1 and count < limit:
         position = []
         # A, knights, white_distances, black_distances, down_map, up_map
         move = best_first_search(
@@ -121,6 +121,11 @@ def run_heurestic(board):
             position.append(coordinates)
         path.append(position) 
 
+    if count < limit:
+        print("I found a solution!")
+        print("Length of path is ", len(path))
+    else:
+        print("I can't find a solution :(")
     printBoard(board, path)
 
 
@@ -130,7 +135,7 @@ def best_first_search(
     white_distances,
     black_distances,
     start_end,
-    repeat_table
+    repeat_table,
 ):
     # **************** adjacent moves = {total_knights i : adjacent squares}
     # **************** knights = [white, black]
@@ -151,11 +156,9 @@ def best_first_search(
         p_considerations = []
         for s in range(len(squares)):
             move = (knight_num, squares[s])
-            start_end_array = single_array(start_end[0], start_end[1])
             g_value = 100*((g(move, white_distances,
                         black_distances, int(len(total_knights) / 2)) - g([knight_num, total_knights[knight_num]], white_distances,
                                                                     black_distances, int(len(total_knights) / 2))))
-            g_start = g([knight_num, start_end_array[knight_num]], white_distances, black_distances, int(len(total_knights) / 2))
             if g([knight_num, total_knights[knight_num]], white_distances, black_distances, int(len(total_knights) / 2)) != 0:
                 g_value = ((g(move, white_distances,
                         black_distances, int(len(total_knights) / 2)) - g([knight_num, total_knights[knight_num]], white_distances,
@@ -245,7 +248,6 @@ def find_adjacent_moves(A, knight, repeat):
             adjacent_moves.append(new_position)
     return adjacent_moves
 
-
 def g(move, white_distances, black_distances, size):
     if move[0] < size:
         # white knight moving
@@ -308,11 +310,17 @@ def BFS(A, origins, n):
             dist[i * len(A[0]) + j] = 10000000
 
     # In the beginning, all origins are of 0 distance, Queue and used_moves contains all origins
-    for o in origins:
-        if o not in used_moves:
-            dist[o] = 0
-            Queue.append(o)
-            used_moves.append(o)
+
+    if isinstance(origins, int) == False:
+        for o in origins:
+            if o not in used_moves:
+                dist[o] = 0
+                Queue.append(o)
+                used_moves.append(o)
+    else: 
+        dist[origins] = 0
+        Queue.append(origins)
+        used_moves.append(origins)
 
     while (len(Queue)) != 0:
         u = Queue[0]
@@ -380,6 +388,47 @@ def count_array(A,B):
         if match(a,B):
             count+=1
     return count
+
+# determines index of when 1D array B first occurs in 2D array A
+def repetition(A,B):
+    index = -1
+    for i in range(len(A)):
+        if match(A[i], B):
+            return i
+    return index
+
+# Takes in a map M, an index i, and a size of the array n
+# Returns the index of the knight that is of the smallest distance in M
+# ALSO returns the sum of all pairwise distances
+def pair_knight(M, i, n, white_knights, black_knights, available_white_knights, available_black_knights):
+    lowest_distance=float('inf')
+    lowest_knight=-1
+    distances=0
+    if i < n and i > 0:
+        # White Knight distance so look at all of black knights
+        if i < int(n/2):
+            lowest_knight=minIndex(available_black_knights) + int(n/2)
+            for j in range(len(black_knights)):
+                distances += M[black_knights[j]]
+                if M[black_knights[j]] < lowest_distance and available_black_knights[j]:
+                    lowest_distance=M[black_knights[j]]
+                    lowest_knight=j + len(black_knights)
+        # Else do the same but for white knights
+        else:
+            lowest_knight=minIndex(available_white_knights)
+            for j in range(len(white_knights)):
+                distances += M[white_knights[j]]
+                if M[white_knights[j]] < lowest_distance and available_white_knights[j]:
+                    lowest_distance=M[white_knights[j]]
+                    lowest_knight=j
+    return lowest_knight, distances
+
+    # returns to minimum element in B that is true
+def minIndex(B):
+    for i in range(len(B)):
+        if B[i] == True:
+            return i
+    return -1
 
 board = [
     ["B", "B", "B", "B", "Y", "Y", "Y", "Y", "Y"],
@@ -452,10 +501,10 @@ board4 = [
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-    ["Y", "W", "Y", "B", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "W", "Y", "B", "B", "Y", "Y", "Y", "Y"],
     ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
-]
-board5 = [
+    ]
+board7 = [
         ["W", "Y", "Y", "B", "Y", "B", "Y"],
         ["Y", "Y", "B", "Y", "N", "N", "Y"],
         ["Y", "Y", "W", "N", "N", "N", "W"],
@@ -471,9 +520,9 @@ board2 = [
     ]
 
 board6 = [
-        ["Y", "W", "Y"],
-        ["W", "Y", "Y"],
-        ["Y", "B", "B"]
+        ["B", "W", "Y", "Y"],
+        ["W", "Y", "W", "Y"],
+        ["Y", "B", "B", "Y"]
     ]
 
 board7 = [
@@ -483,8 +532,114 @@ board7 = [
         ["B", "B", "W", "W", "N", "N", "Y"],
         ["B", "B", "W", "W", "Y", "Y", "Y"]
     ]
+
+
+board1 = [
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "N", "Y", "Y", "N", "Y", "Y", "Y"],
+    ["Y", "N", "N", "N", "N", "N", "N", "Y", "B"],
+    ["N", "Y", "N", "N", "N", "N", "N", "Y", "Y"],
+    ["N", "N", "N", "N", "N", "N", "N", "N", "N"],
+    ["N", "N", "Y", "N", "N", "N", "N", "N", "N"],
+    ["Y", "Y", "Y", "N", "N", "Y", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "B", "Y", "Y", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "W", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "N", "N", "N", "Y", "Y"],
+    ["W", "Y", "Y", "B", "N", "N", "N", "W", "Y"]
+    ]
+
+board8 = [
+    ["B", "Y", "Y", "Y", "Y", "Y", "B", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "B", "B", "Y", "Y", "Y", "Y", "N", "N"],
+    ["N", "N", "N", "N", "N", "N", "Y", "N", "N"],
+    ["N", "N", "N", "N", "N", "N", "Y", "N", "N"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "N", "N"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "N", "N", "N", "N", "Y", "Y", "Y"],
+    ["N", "Y", "Y", "Y", "Y", "N", "Y", "Y", "Y"],
+    ["W", "Y", "Y", "N", "N", "N", "Y", "Y", "Y"],
+    ["W", "W", "W", "Y", "Y", "Y", "Y", "Y", "Y"],
+]
+
+board10 = [
+    ["B", "Y", "N", "N", "N", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "N", "Y", "N", "N", "Y", "B", "Y"],
+    ["Y", "Y", "N", "Y", "N", "N", "Y", "Y", "Y"],
+    ["Y", "N", "Y", "Y", "N", "N", "N", "Y", "Y"],
+    ["Y", "N", "Y", "Y", "N", "N", "N", "N", "B"],
+    ["Y", "B", "B", "N", "N", "Y", "N", "N", "N"],
+    ["N", "N", "N", "N", "N", "N", "N", "N", "N"],
+    ["N", "N", "N", "N", "N", "N", "Y", "N", "N"],
+    ["Y", "N", "N", "Y", "Y", "Y", "Y", "N", "N"],
+    ["Y", "N", "N", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "N"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "N"],
+    ["Y", "N", "N", "N", "N", "N", "N", "Y", "N"],
+    ["N", "N", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["W", "N", "N", "N", "N", "N", "N", "N", "Y"],
+    ["N", "W", "W", "N", "Y", "Y", "Y", "W", "W"],
+]
+
+board5 = [
+    ["Y", "Y", "B", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "B", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "W", "W", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "W", "W", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "B", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "B", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ]
+
+board11 = [
+    ["B", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "W"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "W", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "B", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["W", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "B"],
+    ]
+
+board12 = [
+        ["Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+        ["Y", "Y", "Y", "Y", "Y", "N", "Y"],
+        ["Y", "Y", "Y", "Y", "N", "N", "Y"],
+        ["Y", "Y", "Y", "N", "N", "N", "Y"],
+        ["N", "N", "N", "N", "Y", "Y", "Y"],
+        ["N", "N", "N", "Y", "Y", "Y", "Y"],
+        ["N", "N", "N", "N", "N", "N", "Y"],
+        ["N", "N", "N", "N", "N", "N", "Y"],
+        ["B", "B", "W", "W", "Y", "Y", "Y"],
+        ["B", "B", "W", "W", "Y", "Y", "Y"]
+    ]
+
 def main():
-    run_heurestic(board7)
+    limit = 800
+    run_heurestic(board12, limit)
 
 
 if "__main__" == __name__:
