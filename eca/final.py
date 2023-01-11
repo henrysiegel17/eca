@@ -352,12 +352,32 @@ def main():
     ["N", "N", "N", "N", "N", "N", "N", "N", "N"],
 ]
 
+    board20 = [
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["Y", "Y", "Y", "Y", "Y", "N", "N", "Y", "Y"],
+    ["N", "N", "N", "N", "N", "N", "N", "Y", "Y"],
+    ["N", "N", "N", "N", "N", "N", "N", "W", "W"],
+    ["B", "B", "B", "B", "B", "W", "W", "W", "W"],
+    ["B", "B", "B", "B", "B", "W", "W", "W", "W"],
+]
 
-    small_limit = 1000
+
+
+    small_limit = 3000
     big_limit = 10
     p_size_limit = 10
-    rand_limit = 100
-    updated_heuristic.updated_hueristic(board12, small_limit, big_limit, p_size_limit, rand_limit)
+    rand_limit = 1000
+    updated_heuristic.updated_hueristic(board20, small_limit, big_limit, p_size_limit, rand_limit)
     
 if "__main__" == __name__:
     main()

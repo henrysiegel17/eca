@@ -319,7 +319,6 @@ def printBoard(A, path):
         time_iteration = 0
         key = ""
         play = False
-        fast_forward = False
         while run:
             surface.fill(WHITE)
             for event in pygame.event.get():
@@ -327,16 +326,11 @@ def printBoard(A, path):
                     run = False
             keys = pygame.key.get_pressed()
             if keys[K_SPACE]:
-                if play:
-                    play = False
-                else:
+                if play == False:
                     play = True
-            if keys[K_LSHIFT]:
-                if fast_forward:
-                    fast_forward = False
-                else:
-                    fast_forward = True
-            if keys[K_LEFT]:
+                elif play == True:
+                    play = False
+            elif keys[K_LEFT]:
                 # backtrack
                 if path_index > 0 and movement == False:
                     key = "left"
@@ -350,7 +344,7 @@ def printBoard(A, path):
                             path[path_index - 1][i][1] - path[path_index][i][1]
                         )
                     movement = True
-            if keys[K_RIGHT]:
+            elif keys[K_RIGHT]:
                 # continue to next position
                 if path_index < len(path) - 1 and movement == False:
                     key = "right"
@@ -364,6 +358,61 @@ def printBoard(A, path):
                             path[path_index + 1][i][1] - path[path_index][i][1]
                         )
                     movement = True
+            elif keys[K_d]:
+                # FAST FORWARD (1/10) the path
+                    delta_index = int(len(path)/10)
+                    if delta_index + path_index < len(path) and movement == False:
+                        # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                        for i in range(len(path[0])):
+                            # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                            total_displacement[i][0] = (
+                                path[path_index + delta_index][i][0] - path[path_index][i][0]
+                            )
+                            total_displacement[i][1] = (
+                                path[path_index + delta_index][i][1] - path[path_index][i][1]
+                            )
+                        key = "fast_forward"
+                        movement = True
+                    elif path_index < len(path) - 1 and movement == False:
+                        # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                        for i in range(len(path[0])):
+                            # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                            total_displacement[i][0] = (
+                                path[len(path)-1][i][0] - path[path_index][i][0]
+                            )
+                            total_displacement[i][1] = (
+                                path[len(path)-1][i][1] - path[path_index][i][1]
+                            )
+                        movement = True
+                        key = "fast_forward"
+            elif keys[K_a]:
+            # FAST FORWARD (1/10) the path
+                delta_index = int(len(path)/10)
+                if path_index - delta_index >= 0 and movement == False:
+                    # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                    for i in range(len(path[0])):
+                        # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                        total_displacement[i][0] = (
+                            path[path_index - delta_index][i][0] - path[path_index][i][0]
+                        )
+                        total_displacement[i][1] = (
+                            path[path_index - delta_index][i][1] - path[path_index][i][1]
+                        )
+                    movement = True
+                    key = "rewrind"
+                elif path_index > 0 and movement == False:
+                    # CALCULATE DISPLACEMENT OF EACH COMPONENT
+                    for i in range(len(path[0])):
+                        # CALCULATE TOTAL DISPLACEMENT OF EACH KNIGHT
+                        total_displacement[i][0] = (
+                            path[0][i][0] - path[path_index][i][0]
+                        )
+                        total_displacement[i][1] = (
+                            path[0][i][1] - path[path_index][i][1]
+                        )
+                    movement = True
+                    key = "rewrind"
+
             # We want to scale the images down to the size of the squares
 
             # #print out board:
@@ -400,10 +449,7 @@ def printBoard(A, path):
             if movement == True:
                 # ASSUME IT TAKES KNIGHT 0.25 SECOND TO MOVE
                 time_iteration += 1
-                if fast_forward and play:
-                    time.sleep(0.0005)
-                else:    
-                    time.sleep(0.005)
+                time.sleep(0.005)
 
                 # total of 50 iterations
                 total_iterations = 50
@@ -413,7 +459,20 @@ def printBoard(A, path):
                         path_index -= 1
                     if key == "right":
                         path_index += 1
+                    if key == "fast_forward":
+                        delta_index = int(len(path)/10)
+                        if path_index + delta_index < len(path):
+                            path_index += delta_index
+                        else:
+                            path_index = len(path) - 1
+                    if key == "rewrind":
+                        delta_index = int(len(path)/10)
+                        if path_index - delta_index >= 0:
+                            path_index -= delta_index
+                        else:
+                            path_index = 0
                     movement = False
+                    
                 for s in range(len(path[0])):
                     displacement[s][0] = (
                         total_displacement[s][0] / 50

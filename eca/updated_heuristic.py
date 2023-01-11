@@ -241,7 +241,7 @@ def updated_hueristic(board, small_limit, big_limit, p_size_limit, rand_limit):
             print("Number of failed attempts: ", bigcount)
         bigcount+=1
 
-    if bigcount < big_limit:
+    if bigcount < big_limit -1:
         print("I found a solution!")
         print("Length of path is ", len(path))
     else:
