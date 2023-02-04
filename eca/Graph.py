@@ -1,7 +1,7 @@
 class Vertex(object):
 
-    def __init__(self, adjacent, position, name):
-        self.adjacentVertices = adjacent
+    def __init__(self, position, name):
+        self.adjacentVertices = []
         self.position = position
         self.name = name
 
@@ -11,15 +11,31 @@ class Vertex(object):
     def getPosition(self):
         return self.position
 
+    def addNeighbor(self, u):
+        self.adjacentVertices.append(u)
+
+    def getName(self):
+        return self.name
+
+    def getPosition(self):
+        return self.position
+
     
-class Graph(object):
-    def __init__(self, name, vertices, speed):
+class GraphClass(object):
+    def __init__(self, name, speed):
         self.name = name
-        self.vertices = vertices
+        self.vertices = []
         self.speed = speed
 
     def getVertices(self):
         return self.vertices
+
+    def addVertex(self, u):
+        self.vertices.append(u)
+
+    def addEdge(self, u,v):
+        u.addNeighbor(v)
+        v.addNeighbor(u)
 
     def getEdge(self, u,v):
         pos1 = v.getPosition()
@@ -30,3 +46,10 @@ class Graph(object):
         y2 = pos2[1]
 
         return self.speed*(abs(x2-x1) + abs(y2-y1))
+
+    def findNode(self, text):
+        for i in range(len(self.vertices)):
+            if text == self.vertices[i].getName():
+                return self.vertices[i]
+        return None
+        
