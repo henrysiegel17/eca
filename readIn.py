@@ -55,7 +55,7 @@ def click_event(event, x, y, flags, params):
          adjacent_vertices_string += 'a' + ' '
       # 
       # ADD TO LINE
-      line = room_num + ' ' + f'({x}, {y})' + ' ' + adjacent_vertices_string
+      line = room_num + ' ' + f'{x},{y}' + ' ' + adjacent_vertices_string
       allLines.append(line)
  
 # read the input image
@@ -74,12 +74,6 @@ while True:
    if k == 27:
       break
 cv2.destroyAllWindows()
-
-
-
-
-
-
 
 for connection in Connections:
    node1 = Wean5.findNode(connection[0])
@@ -104,6 +98,10 @@ for v in allVertices:
    line += (str(coordinates[0]), str(coordinates[1]))
    '''
 
+f = open("myfile.txt", "w")
+for line in range(len(allLines)):
+   f.write(line)
+   
 
 
 
